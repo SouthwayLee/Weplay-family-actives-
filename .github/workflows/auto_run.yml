@@ -28,6 +28,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add *.jpg *.jpeg *.png 家族貢獻總表.csv || true
+        git add .
         git commit -m "自動命名與合併登記 (${{ github.sha }})" || exit 0
         git push
+
