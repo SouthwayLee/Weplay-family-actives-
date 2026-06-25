@@ -50,33 +50,36 @@ def process_all_screenshots():
                 if result.get('OCRExitCode') == 1:
                     text = result['ParsedResults'][0]['ParsedText']
                     lines = text.split('\r\n')
-                    
-                    # 【智慧升級：中英文職稱與介面雜訊過濾黑名單】
-                    titles_to_remove = [
-                        "族長", "副族長", "長老", "精英", "核心", "成員", "家族",
-                        "Leader", "Deputy", "Admin", "Elder", "Elite", "Member",
-                        "leader", "deputy", "admin", "elder", "elite", "member",
-                        "今日活躍", "總活躍", "昨日活躍", "ID", "Lv", "lv", "位元"
-                    ]
 
+                                        # 【智慧再升級：關鍵字攔截與符號擦除】
+                    titles_to_remove = ["族長", "副族長", "長老", "精英", "核心", "成員", "家族", "Leader", "Deputy", "Admin", "Elder", "Elite", "Member"]
+                    
                     for line in lines:
                         line = line.strip()
                         
-                        # 1. 智慧擦除：只要有對中黑名單的職稱或英文，通通擦掉
-                        for title in titles_to_remove:
-                            line = line.replace(title, "")
-                        
-                        line = line.strip()  # 再次修剪前後多餘的空白
-                        
-                        # 2. 防呆跳過
-                        if not line:
+                        # 1. 智慧攔截：只要這行字包含 ID、Lv、活躍、位元，整行直接「跳過(continue)」毀滅，不留骨灰！
+                        skip_keywords = ["ID", "id", "Lv", "lv", "活躍", "位元", "總分", "貢獻"]
+                        if any(k in line for k in skip_keywords):
                             continue
                             
-                        # 3. 正確分類
+                        # 2. 擦除傳統職稱
+                        for title in titles_to_remove:
+                            line = line.replace(title, "")
+                            
+                        # 3. 符號擦除器：把殘留的冒號、句點、橫槓、空格通通變不見
+                        for symbol in [":", ".", "：", " ", "-", "_"]:
+                            line = line.replace(symbol, "")
+                            
+                        line = line.strip()
+                        if not line:  # 如果擦完後變成空字串，就直接跳過
+                            continue
+                            
+                        # 4. 精準分類
                         if line.isdigit():
                             all_scores.append(line)
                         else:
                             all_names.append(line)
+
                 else:
                     print(f"圖片 {img_path} 辨識出錯：", result.get('ErrorMessage'))
             except Exception as e:
