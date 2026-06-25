@@ -10,7 +10,7 @@ def process_all_screenshots():
     today_str = datetime.now().strftime("%Y%m%d")
     
     # 1. 直接精準抓取所有以 Screenshot_ 或 IMG_ 開頭的原始截圖 (不分大小寫)
-    extensions = ['Screenshot_*.*', 'screenshot_*.*', 'image_*.*', 'Image_*.*', 'IMG_*.*', 'img_*.*']
+    extensions = ['Screenshot_*.*', 'screenshot_*.*', 'image-*.*', 'Image-*.*', 'IMG_*.*', 'img_*.*']
     temp_images = []
     for ext in extensions:
         temp_images.extend(glob.glob(ext))
