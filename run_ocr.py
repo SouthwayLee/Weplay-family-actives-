@@ -50,14 +50,29 @@ def process_all_screenshots():
                 if result.get('OCRExitCode') == 1:
                     text = result['ParsedResults'][0]['ParsedText']
                     lines = text.split('\r\n')
-                    for line in lines:
-                        line = line.strip()
-                        if not line or "家族" in line or "成員" in line:
-                            continue
-                        if line.isdigit():
-                            all_scores.append(line)
-                        else:
-                            all_names.append(line)
+                            # 【智慧升級：職稱過濾黑名單】
+        titles_to_remove = ["族長", "副族長", "長老", "精英", "核心", "成員", "家族"]
+
+        for line in lines:
+            line = line.strip()
+            
+            # 1. 智慧擦除：巡邏這行文字，只要有對中黑名單的職稱，通通擦掉變成空無一物
+            for title in titles_to_remove:
+                line = line.replace(title, "")
+            
+            line = line.strip()  # 擦除職稱後，再次修剪前後多餘的空白
+            
+            # 2. 防呆跳過：如果這一行原本「只有職稱」（例如單獨一行的"副族長"），
+            #    被擦除後會變成完全空的字串，我們就直接跳過（continue）不處理！
+            if not line:
+                continue
+                
+            # 3. 正確分類
+            if line.isdigit():
+                all_scores.append(line)
+            else:
+                all_names.append(line)
+
                 else:
                     print(f"圖片 {img_path} 辨識出錯：", result.get('ErrorMessage'))
             except Exception as e:
