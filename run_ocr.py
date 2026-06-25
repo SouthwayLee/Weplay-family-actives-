@@ -37,7 +37,7 @@ def process_all_screenshots():
     for img_path in today_images:
         print(f"正在辨識圖片: {img_path} ...")
         # 💡 關鍵變更：因為切換成英文版介面，OCR 辨識語言調整為 'eng' 速度與精準度會大幅提升！
-        payload = {'apikey': 'helloworld', 'language': 'eng'}
+        payload = {'apikey': 'helloworld', 'language': 'cht'}
         with open(img_path, 'rb') as f:
             files = {'file': f}
             try:
