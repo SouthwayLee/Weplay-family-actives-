@@ -9,7 +9,7 @@ def process_all_screenshots():
     today_str = datetime.now().strftime("%Y%m%d")
     
     # 1. 自動偵測並更名所有圖片 (包含 1782 開頭與 Image 開頭的所有截圖)
-    extensions = ['Screenshot_*.*', 'screenshot_*.*', 'IMG_*.*', 'img_*.*', 'Image_*.*', 'image_*.*', '1782*.*']
+    extensions = ['Screenshot_*.*', 'screenshot_*.*', 'IMG_*.*', 'img_*.*', 'Image_*.*', 'image-*.*', 'image_*.*']
     temp_images = []
     for ext in extensions:
         temp_images.extend(glob.glob(ext))
