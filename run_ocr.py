@@ -63,76 +63,51 @@ def process_all_screenshots():
                     temp_total = None
                     expecting = None # 用於處理數值與關鍵字斷行的防呆
 
+                                        # 建立一個乾淨的清單（舊的 temp_name, temp_weekly 等暫存盒都不需要了！）
                     for line in lines:
                         line = line.strip()
                         if not line:
                             continue
                         
-                        # 核心技巧：全面轉成小寫比對，避免大小寫不一致抓不到
                         line_lower = line.lower()
                         
-                        # 【強力防噪防線】排除手機頂部系統雜訊（如時間、網路、人數、分頁標籤）
-                        if (re.match(r'^\d{2}:\d{2}$', line) or  # 過濾時間如 14:19
-                            re.match(r'^\d+/\d+$', line) or     # 過濾人數如 40/70
-                            line_lower in ["4g", "5g", "lte", "wifi"] or # 過濾網路訊號
-                            any(k in line_lower for k in ["family", "tasks", "members", "moments", "manage", "成員", "任務", "動態", "管理"])):
-                            continue
-                        
-                        # 規則一：過濾不需要的欄位或等級行
-                        if any(k in line_lower for k in ["id", "lv", "level"]):
-                            continue
-                        
-                        # 規則二：檢查是否為「周活躍」行 (Weekly)
-                        is_weekly_line = "weekly" in line_lower or "week" in line_lower
-                        is_total_line = "total" in line_lower
-                        
-                        if is_weekly_line:
-                            # 英文版數值可能帶有 K (例如 15.1K)，所以擴充支援擷取字母 K/k
-                            nums = re.findall(r'\d+\.?\d*[Kk]?', line)
-                            if nums:
-                                temp_weekly = nums[0]
-                            else:
-                                expecting = "weekly" # 沒看到數字，代表數字可能斷行在下一行
-                            if not is_total_line:
-                                continue # 如果這行沒有同時包含「Total」，就跳下一行處理
-                                
-                        # 規則三：檢查是否為「總活躍」行 (Total)
-                        if is_total_line:
-                            nums = re.findall(r'\d+\.?\d*[Kk]?', line)
-                            if nums:
-                                temp_total = nums[0]
-                            else:
-                                expecting = "total"
+                        # 【強力防噪防線】排除手機頂部雜訊（時間、網路、標題列等）
+                        if (re.match(r'^\d{2}:\d{2}$', line) or 
+                            re.match(r'^\d+/\d+$', line) or     
+                            line_lower in ["4g", "5g", "lte", "wifi"] or 
+                            any(k in line_lower for k in ["family", "tasks", "members", "moments", "manage", "成員", "任務", "動態", "管理", "activeness", "donation", "weekly", "total", "週貢獻", "總貢獻"])):
                             continue
 
-                        # 規則四：處理單獨斷行出現的純數字或帶 K 數值 (例如單獨一行的 9391 或 15.1K)
-                        is_numeric_value = re.match(r'^\d+\.?\d*[Kk]?$', line)
-                        if is_numeric_value:
-                            if expecting == "weekly":
-                                temp_weekly = line
-                                expecting = None
-                            elif expecting == "total":
-                                temp_total = line
-                                expecting = None
-                            continue
-
-                        # 規則五：排除以上所有狀況後，剩下的就是「名字行」了
-                        # 擦除英文與中文的職稱雜訊 (flags=re.IGNORECASE 代表不區分大小寫，Leader/leader都能擦除)
-                        titles_to_remove = ["leader", "deputy", "admin", "member", "core", "family", "族長", "副族長", "長老", "成員"]
-                        for title in titles_to_remove:
-                            line = re.sub(re.escape(title), "", line, flags=re.IGNORECASE)
+                        # ✨【全新設定：單行直抓名字+雙數字】
+                        # 1. 用 findall 找出這一行所有的數字（例如輸入 "李艾德 1100 30.0K"，會抓出 ['1100', '30.0K']）
+                        nums = re.findall(r'\d+\.?\d*[Kk]?', line)
                         
-                        # 清理常見 OCR 錯判的干擾符號
-                        for symbol in [":", ".", "：", " ", "-", "_", ",", "I", "l", "|"]:
-                            line = line.replace(symbol, "")
+                        # 2. 核心條件：這一行必須「至少有兩個數字」才處理
+                        if len(nums) >= 2:
+                            weekly_val = nums[0]  # 第一個數字是週活躍
+                            total_val = nums[1]   # 第二個數字是總活躍
                             
-                        clean_text = line.strip()
-                        
-                        # 確保擦乾淨後真的是暱稱（長度大於1且不是純數值）
-                        if clean_text and not re.match(r'^\d+\.?\d*[Kk]?$', clean_text) and len(clean_text) > 1:
-                            # 🎉 發現下一個人的名字！如果前一個人有留下資料，立刻幫前一個人存檔寫入總表
-                            if temp_name and (temp_weekly or temp_total):
-                                final_data_pairs.append((temp_name, temp_weekly or "0", temp_total or "0"))
+                            # 3. 用 find 找到第一個數字在字串中的起點位置
+                            first_num_pos = line.find(weekly_val)
+                            
+                            # 4. 切割字串：起點左邊 [:first_num_pos] 的通通歸類為名字
+                            name_part = line[:first_num_pos]
+                            
+                            # 5. 擦除名字區域內可能夾帶的職稱或等級雜訊
+                            titles_to_remove = ["leader", "deputy", "admin", "member", "core", "family", "族長", "副族長", "長老", "成員", "lv", "level", "id"]
+                            for title in titles_to_remove:
+                                name_part = re.sub(re.escape(title), "", name_part, flags=re.IGNORECASE)
+                            
+                            # 6. 清理常見 OCR 錯判的符號
+                            for symbol in [":", ".", "：", " ", "-", "_", ",", "I", "l", "|", "…", "★", "☆"]:
+                                name_part = name_part.replace(symbol, "")
+                                
+                            clean_text = name_part.strip()
+                            
+                            # 7. 只要名字擦乾淨後長度大於 1，立刻 append 打包進最終總表！
+                            if clean_text and len(clean_text) > 1:
+                                final_data_pairs.append((clean_text, weekly_val, total_val))
+
                             
                             # 重置暫存置物盒，開始裝新人的資料
                             temp_name = clean_text
