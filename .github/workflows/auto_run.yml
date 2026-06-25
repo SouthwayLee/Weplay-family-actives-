@@ -1,0 +1,33 @@
+name: Auto Register Family Score
+
+# 當你上傳或更新 weplay.jpg 的時候，自動觸發這個機器人
+on:
+  push:
+    paths:
+      - 'weplay.jpg'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 複製倉庫程式碼 (Check out repository)
+      uses: actions/checkout@v3
+
+    - name: 設定 Python 環境 (Set up Python)
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 安裝網路套件 (Install dependencies)
+      run: pip install requests
+
+    - name: 執行 AI 辨識與登記 (Run OCR script)
+      run: python run_ocr.py
+
+    - name: 自動將更新後的 Excel/CSV 檔案存回 GitHub (Commit files)
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add 家族貢獻總表.csv
+        git commit -m "自動登記今天活躍值 (${{ github.sha }})" || exit 0
+        git push
