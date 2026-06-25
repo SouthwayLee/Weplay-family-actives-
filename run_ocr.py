@@ -4,51 +4,43 @@ import glob
 from datetime import datetime
 
 def process_all_screenshots():
+    # 【偵錯防線】強迫印出目前雲端資料夾看得到的所有檔案
+    print("【系統日誌】目前雲端資料夾內的檔案列表：", os.listdir('.'))
+    
     today_str = datetime.now().strftime("%Y%m%d")
     
-    # 1. 搜集資料夾內所有的圖片 (不分大小寫)
-    extensions = ['*.jpg', '*.jpeg', '*.png', '*.JPG', '*.JPEG', '*.PNG']
-    all_files = []
-    for ext in extensions:
-        all_files.extend(glob.glob(ext))
-        
-    # 【最簡單的防呆邏輯】只要不是我們改名好的格式（日期_數字.副檔名），就一律當作新截圖！
+    # 1. 直接精準抓取所有以 Screenshot_ 或 IMG_ 開頭的原始截圖 (不分大小寫)
+    extensions = ['Screenshot_*.*', 'screenshot_*.*', 'IMG_*.*', 'img_*.*']
     temp_images = []
-    for f in all_files:
-        name_without_ext = os.path.splitext(f)[0]
-        # 如果名字是 20260625_1 這種格式，就代表處理過了，直接跳過
-        if name_without_ext.startswith(today_str) and "_" in name_without_ext and name_without_ext.split("_")[-1].isdigit():
-            continue
-        temp_images.append(f)
+    for ext in extensions:
+        temp_images.extend(glob.glob(ext))
         
-    temp_images = sorted(temp_images)
+    temp_images = sorted(list(set(temp_images))) # 去除重複並排序
     
     if temp_images:
-        print(f"偵測到 {len(temp_images)} 張新截圖，開始自動更名...")
+        print(f"🎯 成功偵測到 {len(temp_images)} 張全新原始截圖，開始自動更名...")
         for index, old_path in enumerate(temp_images, start=1):
             ext = os.path.splitext(old_path)[1].lower()
             new_name = f"{today_str}_{index}{ext}"
             os.rename(old_path, new_name)
             print(f"重新命名成功：{old_path} -> {new_name}")
     else:
-        print("沒有偵測到新上傳的原始截圖。")
+        print("❌ 沒有偵測到任何以 Screenshot_ 或 IMG_ 開頭的新截圖。")
 
-    # 2. 重新抓取今天改名好的檔案
-    today_images = []
-    for ext in ['.jpg', '.jpeg', '.png']:
-        today_images.extend(glob.glob(f"{today_str}_*{ext}"))
-    today_images = sorted(today_images)
+    # 2. 抓取今天已經改名好的檔案 (例如 20260625_1.jpg) 準備送去辨識
+    today_images = sorted(glob.glob(f"{today_str}_*.*"))
     
     if not today_images:
-        print("沒有找到今日改名完成、需要辨識的截圖。")
+        print("📭 今天沒有改名完成的圖片需要辨識，流程結束。")
         return
 
+    print(f"📝 開始發送 AI 辨識今天的 {len(today_images)} 張圖片...")
     all_names = []
     all_scores = []
     url = "https://api.ocr.space/parse/image"
     
     for img_path in today_images:
-        print(f"正在送往 AI 辨識圖片: {img_path} ...")
+        print(f"正在辨識圖片: {img_path} ...")
         payload = {'apikey': 'helloworld', 'language': 'cht'}
         with open(img_path, 'rb') as f:
             files = {'file': f}
@@ -84,7 +76,7 @@ def process_all_screenshots():
         for i in range(min_len):
             f.write(f"{display_date},{all_names[i]},{all_scores[i]}\n")
             
-    print("🎉 所有人數據已成功合併登記！")
+    print("🎉 所有人數據已成功合併登記至 家族貢獻總表.csv！")
 
 if __name__ == "__main__":
     process_all_screenshots()
